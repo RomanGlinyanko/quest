@@ -1,3 +1,3 @@
-insert into quest (quest) values ('
-Что такое SOLID
-');
+insert into quest (quest, answer) 
+values ('Что такое SOLID', 
+'SOLID - ');
