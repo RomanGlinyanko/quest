@@ -1,6 +1,12 @@
 create database quest encoding utf8;
-create schema quest authorization quest;
+
+-- Переключиться на БД Quest
 create user quest with password 'RX777ngS';
+-- drop user quest
+create schema quest authorization quest;
+
+-- select * from information_schema.schemata;
+
 
 /* select 
 	* 
