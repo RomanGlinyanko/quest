@@ -2,3 +2,4 @@ venv/
 .env/
 env/
 test_conn.py
+cmd.txt
