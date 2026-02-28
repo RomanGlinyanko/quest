@@ -1,0 +1,1 @@
+truncate table quest restart identity;
