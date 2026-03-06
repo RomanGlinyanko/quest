@@ -4,3 +4,4 @@ env/
 test_conn.py
 cmd.txt
 tools.sql
+.env
