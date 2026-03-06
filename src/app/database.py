@@ -1,26 +1,43 @@
-#Настройка SQLAlchemy и движка БД
+import asyncio
+from typing import AsyncGenerator
 
-# Импорт необходимых инструментов для асинхронной работы
+# Импортируем асинхронные инструменты SQLAlchemy
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
-# Базовый класс для объявления моделей (в стиле SQLAlchemy 2.0)
-from sqlalchemy.orm import DeclarativeBase
+# Импортируем базовый класс из вашего models.py (чтобы знать о таблицах)
+from .models import Base 
 
-# URL подключения: используется драйвер asyncpg для асинхронной работы с Postgres
-DATABASE_URL = "postgresql+asyncpg://postgres:RX777ngS@localhost/quest"
+# 1. URL подключения. 
+# Формат: postgresql+asyncpg://логин:пароль@хост:порт/имя_базы
+# В идеале это должно браться из переменных окружения (.env)
+DATABASE_URL = "postgresql+asyncpg://user:password@localhost:5432/exam_trainer"
 
-# Создание "движка" — объекта, который управляет пулом соединений с БД
-engine = create_async_engine(DATABASE_URL)
+# 2. Создаем Engine — это "мотор", который умеет общаться с БД.
+# echo=True заставит алхимию печатать все SQL-запросы в консоль (полезно при отладке)
+engine = create_async_engine(
+    DATABASE_URL,
+    echo=True,
+    future=True # Использовать API SQLAlchemy 2.0
+)
 
-# Фабрика сессий: создает объекты AsyncSession для выполнения запросов
-# expire_on_commit=False предотвращает ошибку при обращении к атрибутам объекта после commit
-async_session = async_sessionmaker(engine, expire_on_commit=False)
+# 3. Создаем фабрику сессий. 
+# expire_on_commit=False критично для асинхронности, чтобы объекты не "пропадали" после коммита.
+async_session_maker = async_sessionmaker(
+    engine, 
+    class_=AsyncSession, 
+    expire_on_commit=False
+)
 
-# Создание базового класса, от которого будут наследоваться все модели (таблицы)
-class Base(DeclarativeBase):
-    pass
+# 4. Dependency для FastAPI (или другого веб-фреймворка).
+# Этот генератор будет выдавать сессию на каждый запрос и автоматически закрывать её.
+async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
+    async with async_session_maker() as session:
+        yield session
 
-# Асинхронный генератор (Dependency Injection) для FastAPI
-async def get_db():
-    # Открывает сессию в контекстном менеджере (гарантирует закрытие после использования)
-    async with async_session() as session:
-        yield session # Возвращает сессию в обработчик запроса
+# 5. Вспомогательная функция для инициализации таблиц (если их еще нет).
+# В реальных проектах лучше использовать миграции (Alembic), 
+# но для старта это полезно.
+async def init_db():
+    async with engine.begin() as conn:
+        # Это создаст все таблицы, описанные в models.py
+        # Внимание: если таблицы уже есть в БД, он их не тронет.
+        await conn.run_sync(Base.metadata.create_all)
